@@ -1,41 +1,44 @@
 // append the names as options for the dropdown
-d3.json("data/samples.json").then((data) => {
-    var names = data.metadata;
-    names.forEach(element => {
-        d3.select("#selDataset").append('option').text(element.id);
+d3.json("data/samples.json").then((dict) => {
+    var samples_m = dict.metadata;
+    var samples_s = dict.samples;
+    samples_m.forEach(x => {
+        d3.select("#selDataset").append('option').attr('id',`${x.id}`).text(x.id)
     });
 });
-//change barplot/pieplot
-var dropdown = d3.select('#selplot');
-dropdown.on('change',barPiePlot());
+var CHART_TYPE = "bar"
+var DATA_SET = "940"
+
 // Display the default page
 function init() {
-        //table
-        demoTable("940"); 
-        //create the graph
-        barPiePlot("940")
-        //create the bubble chart
-        bubble("940");
-        //creates the gauge chart
-        gauge("940");
+    //tables
+    demoTable(DATA_SET); 
+    //create the graph
+    barPiePlot(DATA_SET)
+    //create the bubble chart
+    bubble(DATA_SET);
+    //creates the gauge chart
+    gauge(DATA_SET);
 };
-// Display page according to the subjetc
-function optionChanged(val){
-        //table
-        demoTable(val);
-        //create the barplot
-        barPiePlot(val);
-        //create the bubble chart
-        bubble(val);
-        //creates the gauge
-        gauge(val);
-    };
+
+//chart select
+function chartChanged(chartType){
+    CHART_TYPE = chartType
+    barPiePlot(DATA_SET)
+}
+
+// Display page according to the subject
+function optionChanged(subject){
+    //set data set
+    DATA_SET = subject
+    init()
+};
 init();
 /////// ///////////////// FUNCTIONS TO CREATE THE TABLE AND THE PLOTS ////////////////////////////////
 //creates the demographic table
-function demoTable(val){
+function demoTable(subject){
     d3.json("data/samples.json").then((dict) => {
-        var tableData = dict.metadata.filter(x => x.id === parseInt(val));
+        var tableData = dict.metadata.filter(x => x.id === parseInt(subject));
         d3.select("#sample-metadata").html("");
         d3.select("#sample-metadata").append('p').text(`AGE : ${tableData[0].age}`).attr("class","panel-text");
         d3.select("#sample-metadata").append('p').text(`BBTYPE : ${tableData[0].bbtype}`).attr("class","panel-text");
@@ -47,50 +50,51 @@ function demoTable(val){
     });
 }
 //creates the bar and pie charts
-function barPiePlot(val){
+function barPiePlot(subject){
     d3.json("data/samples.json").then((dict) => {
-    var filteredData = dict.samples.filter(x => x.id === val);
-    var otu_ids = filteredData[0].otu_ids;
-    var values = filteredData[0].sample_values;
-    var labels = filteredData[0].otu_labels;
-    var samples = []
-    for(i=0;i<otu_ids.length;i++){
-        samples.push({
-            otu_ids : otu_ids[i],
-            value : values[i],
-            label : labels[i]});
-    };
-    //sort Descending and select the top 10
-    var sorted_samples = samples.sort(
-        (s1,s2) => s2.value - s1.value).slice(0,10);
-    if (dropdown.node().value === 'Piechart'){
-        var data = [{
-            values: sorted_samples.reverse().map(x => x.value),
-            labels: sorted_samples.reverse().map(x => `OTU ${x.otu_ids}`),
-            type: 'pie',
-            hovertext: sorted_samples.reverse().map(x => x.label)
-            }];
-        var layout = {
-            title: `${val} top 10 OTU`
-        }
-    }else{
-        var data = [{
-            x: sorted_samples.reverse().map(x => x.value),
-            y: sorted_samples.reverse().map(x => `OTU ${x.otu_ids}`),
-            type: 'bar',
-            orientation: 'h',
-            hovertext: sorted_samples.reverse().map(x => x.label)
-            }];
-        var layout = {
-            title: `${val} top 10 OTU`
+        var filteredData = dict.samples.filter(x => x.id === subject);
+        var otu_ids = filteredData[0].otu_ids;
+        var values = filteredData[0].sample_values;
+        var labels = filteredData[0].otu_labels;
+        var samples = []
+        for(i=0;i<otu_ids.length;i++){
+            samples.push({
+                otu_ids : otu_ids[i],
+                value : values[i],
+                label : labels[i]});
         };
-    }
-    Plotly.newPlot('plot', data,layout)
+        //sort Descending and select the top 10
+        var sorted_samples = samples.sort(
+            (s1,s2) => s2.value - s1.value).slice(0,10);
+        var dropdown = d3.select("#selPlot");
+        if (CHART_TYPE === 'Piechart'){
+            var data = [{
+                values: sorted_samples.reverse().map(x => x.value),
+                labels: sorted_samples.reverse().map(x => `OTU ${x.otu_ids}`),
+                type: 'pie',
+                hovertext: sorted_samples.reverse().map(x => x.label)
+                }];
+            var layout = {
+                title: `${subject} top 10 OTU`
+            }
+        }else{
+            var data = [{
+                x: sorted_samples.reverse().map(x => x.value),
+                y: sorted_samples.reverse().map(x => `OTU ${x.otu_ids}`),
+                type: 'bar',
+                orientation: 'h',
+                hovertext: sorted_samples.reverse().map(x => x.label)
+                }];
+            var layout = {
+                title: `${subject} top 10 OTU`
+            };
+        }
+        Plotly.newPlot('plot', data,layout)
     });
 }
-function bubble(val){
+function bubble(subject){
     d3.json("data/samples.json").then((dict) => {
-        var filteredData = dict.samples.filter(x => x.id === val);
+        var filteredData = dict.samples.filter(x => x.id === subject);
         var otu_ids = filteredData[0].otu_ids;
         var values = filteredData[0].sample_values;
         var sizes = []
@@ -105,17 +109,17 @@ function bubble(val){
             size: sizes,
             color: otu_ids
         }
-        }];
+        }]; 
         var layout = {
         title:'OTU abundance per id',
         xaxis: {text: "OTU"}
         };
-    Plotly.newPlot('bubble', data, layout);
+        Plotly.newPlot('bubble', data, layout);
     });
 }
-function gauge(val){
+function gauge(subject){
     d3.json("data/samples.json").then((dict) => {
-        var tableData = dict.metadata.filter(x => x.id === parseInt(val));
+        var tableData = dict.metadata.filter(x => x.id === parseInt(subject));
     // Path to plot the needle
     switch (parseInt(tableData[0].wfreq)){
         case 1:
